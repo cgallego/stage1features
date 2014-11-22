@@ -47,9 +47,12 @@ if __name__ == '__main__':
         ismass = bool(fileline[9])
         isnonmass = bool(fileline[10])
         cond = fileline[15] 
-        Diagnosis = fileline[16]        
-
-        DicomExamNumber = AccessionNumber
+        Diagnosis = fileline[16]     
+        sideBreast = fileline[14]
+        
+        if(lesion_id>272):
+            DicomExamNumber = AccessionNumber
+        
         #############################
         ###### 1) Querying Research database for clinical, pathology, radiology data
         #############################
@@ -69,7 +72,7 @@ if __name__ == '__main__':
             #############################                  
             ###### 3) Load segmentation and display
             #############################
-            [series_path, phases_series, lesion3D] = Send2DB.loadSegment(path_rootFolder, cond, StudyID, DicomExamNumber, SeriesID, Lesionfile, T2SeriesID, path_T2Series, lesion_id)
+            [series_path, phases_series, lesion3D] = Send2DB.loadSegment(path_rootFolder, cond, StudyID, DicomExamNumber, SeriesID, Lesionfile, T2SeriesID, path_T2Series, lesion_id, sideBreast)
             
             #############################
             # 4) Extract Lesion and Muscle Major pectoralies signal                                   

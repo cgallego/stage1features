@@ -49,7 +49,7 @@ class Send(object):
         self.casesFrame={}        
         
 
-    def loadSegment(self, path_rootFolder, cond, StudyID, DicomExamNumber, SeriesID, Lesionfile, T2SeriesID, path_T2Series, lesion_id):
+    def loadSegment(self, path_rootFolder, cond, StudyID, DicomExamNumber, SeriesID, Lesionfile, T2SeriesID, path_T2Series, lesion_id, sideBreast):
         """ Load a previously existing segmentation"""
         #############################
         ###### Start by Loading 
@@ -59,18 +59,20 @@ class Send(object):
         [series_path, phases_series, lesionID_path] = self.load.readVolumes(data_loc, StudyID, DicomExamNumber, SeriesID, Lesionfile)
         print "Path to series location: %s" % series_path 
         print "List of pre and post contrast volume names: %s" % phases_series
-        lesionname=True ## for ids=273:410
-        if(lesionname):
+
+        if(lesion_id>272):
             lesionID_path = lesionID_path[:-17]+str(lesion_id)+os.sep+Lesionfile
             self.pathSegment = path_rootFolder+os.sep+'seg+T2'
             self.nameSegment = Lesionfile
+            lesionname=True
         else:
             self.pathSegment = path_rootFolder+os.sep+'seg+T2'
             self.nameSegment = StudyID+'_'+DicomExamNumber+'_'+Lesionfile+'.vtk'
+            lesionname=False
         
         print "Path to lesion segmentation: %s" % lesionID_path
         print "\n Load Segmentation..."
-        self.lesion3D = self.load.loadSegmentation(lesionID_path, lesionname=True)
+        self.lesion3D = self.load.loadSegmentation(lesionID_path, lesionname)
         print "Data Structure: %s" % self.lesion3D.GetClassName()
         print "Number of points: %d" % int(self.lesion3D.GetNumberOfPoints())
         print "Number of cells: %d" % int(self.lesion3D.GetNumberOfCells())
@@ -88,6 +90,14 @@ class Send(object):
             self.loadDisplay.visualize(self.load.DICOMImages, self.load.image_pos_pat, self.load.image_ori_pat, sub=True, postS=1, interact=False)
             print "\n Visualize addT2visualize ..."
             self.loadDisplay.addT2visualize(self.load.T2Images, self.load.T2image_pos_pat, self.load.T2image_ori_pat, self.load.T2dims, self.load.T2spacing, interact=False)
+            
+            if(lesion_id>272):
+                #transT2 = int(raw_input('\n Translate T2 by xf_T1? Yes:1 No:0 : '))
+                #if transT2:
+                self.loadDisplay.addT2transvisualize(self.load.T2Images, self.load.T2image_pos_pat, self.load.T2image_ori_pat, self.load.T2dims, self.load.T2spacing, sideBreast, interact=False)
+                self.load.T2image_pos_pat[0] = -self.loadDisplay.T2origin[2] 
+            
+            #self.loadDisplay.addT2visualize(self.load.T2Images, self.load.T2image_pos_pat, self.load.T2image_ori_pat, self.load.T2dims, self.load.T2spacing, interact=False)
         else:
             self.loadDisplay.visualize(self.load.DICOMImages, self.load.image_pos_pat, self.load.image_ori_pat, sub=True, postS=1, interact=False)
         
@@ -334,7 +344,7 @@ class Send(object):
                 [T2_muscleSI, muscle_scalar_range, bounds_muscleSI]  = self.T2.extract_muscleSI(self.load.T2Images, self.load.T2image_pos_pat, self.load.T2image_ori_pat,  self.loadDisplay.iren1, self.loadDisplay.renderer1, self.loadDisplay.picker, self.loadDisplay.xImagePlaneWidget, self.loadDisplay.yImagePlaneWidget, self.loadDisplay.zImagePlaneWidget)
                 print "ave. T2_muscleSI: %d" % mean(T2_muscleSI)
                 
-            self.loadDisplay.iren1.Start()            
+            #self.loadDisplay.iren1.Start()            
             # Do extract_lesionSI       
             [T2_lesionSI, lesion_scalar_range]  = self.T2.extract_lesionSI(self.load.T2Images, lesion3D, self.load.T2image_pos_pat, self.load.T2image_ori_pat, self.loadDisplay, self.pathSegment, self.nameSegment)
             print "ave. T2_lesionSI: %d" % mean(T2_lesionSI)

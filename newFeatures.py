@@ -284,6 +284,9 @@ class newFeatures(object):
         indNodeT2 = kmeans.predict(X) 
         indNodecountT2 = zeros(nnodesT2)
         print indNodeT2
+        if(~any(indNodeT2)):
+            print "NULLS"
+            
         T2SI = zeros(nnodesT2)
         for k in range(len(indNodeT2)):
             # acummulate pixvals assigned to nodes

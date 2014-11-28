@@ -172,7 +172,12 @@ class newFeatures(object):
             self.deltaS['T2k'] = kVals            
             pixVals = []
             iVals = []; jVals = []; kVals = [];            
-                  
+        else:
+            self.deltaS['T2'] = []
+            self.deltaS['T2i'] = []            
+            self.deltaS['T2j'] = []            
+            self.deltaS['T2k'] = [] 
+            
         #############################
         ###### Extract time
         #############################
@@ -182,7 +187,7 @@ class newFeatures(object):
         return self.deltaS, self.t_delta, centerijk
 
         
-    def generateNodesfromKmeans(self, x, y, z, pixVals, centerijk):
+    def generateNodesfromKmeans(self, x, y, z, pixVals, centerijk, T2SeriesID):
         global contourWidget
         
         X = zeros((len(x),3))
@@ -245,55 +250,62 @@ class newFeatures(object):
             indNodecount[indNode[k]] += 1
             
         ############ process T2 PixVals from pixCluster
-        x=pixVals['T2i']; y=pixVals['T2j']; z=pixVals['T2k'];
-        T2pixVals = pixVals['T2']
-        X = zeros((len(x),3))
-        X[:, 0] = x
-        X[:, 1] = y
-        X[:, 2] = z
+        if (T2SeriesID != 'NONE'): 
+            x=pixVals['T2i']; y=pixVals['T2j']; z=pixVals['T2k'];
+            T2pixVals = pixVals['T2']
+            X = zeros((len(x),3))
+            X[:, 0] = x
+            X[:, 1] = y
+            X[:, 2] = z
+            
+            kmeans_estimators = {'k_means_20': KMeans(n_clusters=20, n_init=5, init='random')}
+            for name, kmeans in kmeans_estimators.iteritems():
+                       
+                # PErform k-means clustering on x,y,z positions
+                kmeans.fit(X)
+                labels = kmeans.labels_
+                print labels
         
-        kmeans_estimators = {'k_means_20': KMeans(n_clusters=20, n_init=5, init='random')}
-        for name, kmeans in kmeans_estimators.iteritems():
-                   
-            # PErform k-means clustering on x,y,z positions
-            kmeans.fit(X)
-            labels = kmeans.labels_
-            print labels
+                fig = plt.figure(4, figsize=(4, 3))
+                ax = Axes3D(fig, rect=[0, 0, .95, 1], elev=48, azim=134)       
+                ax.scatter(X[:, 0], X[:, 1], X[:, 2], c=labels.astype(float))
+            
+                ax.w_xaxis.set_ticklabels([])
+                ax.w_yaxis.set_ticklabels([])
+                ax.w_zaxis.set_ticklabels([])
+                
+                kmeansnodesT2 = kmeans.cluster_centers_
+                nnodesT2 = kmeans.n_clusters
+                ax.set_xlim3d(min(kmeansnodesT2[:,0]), max(kmeansnodesT2[:,0]))
+                ax.set_ylim3d(min(kmeansnodesT2[:,1]), max(kmeansnodesT2[:,1]))
+                ax.set_zlim3d(min(kmeansnodesT2[:,2]), max(kmeansnodesT2[:,2]))
+                ax.set_xlabel('X')
+                ax.set_ylabel('Y')
+                ax.set_zlabel('Z')
+                
+            print 'K-means n_clustersT2: %d' % nnodesT2
+            print 'K-means cluster centersT2: ' % kmeansnodesT2    
+            
+            indNodeT2 = kmeans.predict(X) 
+            indNodecountT2 = zeros(nnodesT2)
+            print indNodeT2
+            if(~any(indNodeT2)):
+                print "NULLS"
+                
+            T2SI = zeros(nnodesT2)
+            for k in range(len(indNodeT2)):
+                # acummulate pixvals assigned to nodes
+                T2SI[indNodeT2[k]] += T2pixVals[k]
+                # increment points in node count            
+                indNodecountT2[indNodeT2[k]] += 1
+                
+            ave_T2 = T2SI/indNodecountT2
+            print "ave_T2:"
+            print ave_T2 
+        else:
+            ave_T2=zeros(20)*nan
     
-            fig = plt.figure(4, figsize=(4, 3))
-            ax = Axes3D(fig, rect=[0, 0, .95, 1], elev=48, azim=134)       
-            ax.scatter(X[:, 0], X[:, 1], X[:, 2], c=labels.astype(float))
-        
-            ax.w_xaxis.set_ticklabels([])
-            ax.w_yaxis.set_ticklabels([])
-            ax.w_zaxis.set_ticklabels([])
-            
-            kmeansnodesT2 = kmeans.cluster_centers_
-            nnodesT2 = kmeans.n_clusters
-            ax.set_xlim3d(min(kmeansnodesT2[:,0]), max(kmeansnodesT2[:,0]))
-            ax.set_ylim3d(min(kmeansnodesT2[:,1]), max(kmeansnodesT2[:,1]))
-            ax.set_zlim3d(min(kmeansnodesT2[:,2]), max(kmeansnodesT2[:,2]))
-            ax.set_xlabel('X')
-            ax.set_ylabel('Y')
-            ax.set_zlabel('Z')
-            
-        
-        print 'K-means n_clustersT2: %d' % nnodesT2
-        print 'K-means cluster centersT2: ' % kmeansnodesT2    
-        
-        indNodeT2 = kmeans.predict(X) 
-        indNodecountT2 = zeros(nnodesT2)
-        print indNodeT2
-        if(~any(indNodeT2)):
-            print "NULLS"
-            
-        T2SI = zeros(nnodesT2)
-        for k in range(len(indNodeT2)):
-            # acummulate pixvals assigned to nodes
-            T2SI[indNodeT2[k]] += T2pixVals[k]
-            # increment points in node count            
-            indNodecountT2[indNodeT2[k]] += 1
-
+        ################################################
         # process node pixvalues    
         ave_pre_pixVals = preSI/indNodecount
         print "ave_pre_pixVals:"
@@ -306,10 +318,6 @@ class newFeatures(object):
         ave_late_pixVals = lateSI/indNodecount
         print "ave_late_pixVals" 
         print ave_late_pixVals
-        
-        ave_T2 = T2SI/indNodecountT2
-        print "ave_T2:"
-        print ave_T2        
         
         # gather SE ratios
         earlySE = (ave_early_pixVals-ave_pre_pixVals)/ave_pre_pixVals

@@ -61,7 +61,13 @@ class Send(object):
         print "List of pre and post contrast volume names: %s" % phases_series
 
         if(lesion_id>272):
-            lesionID_path = lesionID_path[:-17]+str(lesion_id)+os.sep+Lesionfile
+            if( len(StudyID) == 2):
+                lesionID_path = lesionID_path[:-18]+str(lesion_id)+os.sep+Lesionfile
+            if( len(StudyID) == 3):
+                lesionID_path = lesionID_path[:-19]+str(lesion_id)+os.sep+Lesionfile
+            if( len(StudyID) == 4):
+                lesionID_path = lesionID_path[:-20]+str(lesion_id)+os.sep+Lesionfile
+        
             self.pathSegment = path_rootFolder+os.sep+'seg+T2'
             self.nameSegment = Lesionfile
             lesionname=True
@@ -104,7 +110,7 @@ class Send(object):
         #############################
         ###### ELoad Segmentation and visualize
         #############################
-        self.loadDisplay.addSegment(self.lesion3D, (0,1,0), interact=False)                             
+        self.loadDisplay.addSegment(self.lesion3D, (0,1,0), interact=True)                             
         #self.VOIlesion3D = self.createSegment.ensureInSegment(self.load.DICOMImages[0], self.lesion3D, self.pathSegment, self.nameSegment, self.load.image_pos_pat, self.load.image_ori_pat)
         self.createSegment.saveSegmentation(self.pathSegment,  self.lesion3D, lesionfilename=self.nameSegment) 
         #self.loadDisplay.addSegment(tosaveseg, (0,1,0), interact=False)
@@ -112,7 +118,7 @@ class Send(object):
         return series_path, phases_series, self.lesion3D
         
         
-    def checkSegment(self, path_rootFolder, fileline, line, cond, StudyID, DicomExamNumber, SeriesID, Lesionfile, path_T2Series, T2SeriesID):  
+    def checkSegment(self, path_rootFolder, cond, StudyID, DicomExamNumber, SeriesID, Lesionfile, T2SeriesID, path_T2Series, lesion_id, sideBreast):  
         """ Load a previously existing segmentation or create a new one and check with annotations, if any"""
         #############################                  
         ###### 2) Check segmentation accuracy with annotations
@@ -124,10 +130,27 @@ class Send(object):
         [series_path, phases_series, lesionID_path] = self.load.readVolumes(data_loc, StudyID, DicomExamNumber, SeriesID, Lesionfile)
         print "Path to series location: %s" % series_path 
         print "List of pre and post contrast volume names: %s" % phases_series
+        
+        if(lesion_id>272):
+            if( len(StudyID) == 2):
+                lesionID_path = lesionID_path[:-18]+str(lesion_id)+os.sep+Lesionfile
+            if( len(StudyID) == 3):
+                lesionID_path = lesionID_path[:-19]+str(lesion_id)+os.sep+Lesionfile
+            if( len(StudyID) == 4):
+                lesionID_path = lesionID_path[:-20]+str(lesion_id)+os.sep+Lesionfile
+        
+            self.pathSegment = path_rootFolder+os.sep+'seg+T2'
+            self.nameSegment = Lesionfile
+            lesionname=True
+        else:
+            self.pathSegment = path_rootFolder+os.sep+'seg+T2'
+            self.nameSegment = StudyID+'_'+DicomExamNumber+'_'+Lesionfile+'.vtk'
+            lesionname=False
+        
         print "Path to lesion segmentation: %s" % lesionID_path
         
         print "\n Load Segmentation..."
-        self.lesion3D = self.load.loadSegmentation(lesionID_path)
+        self.lesion3D = self.load.loadSegmentation(lesionID_path, lesionname)
         print "Data Structure: %s" % self.lesion3D.GetClassName()
         print "Number of points: %d" % int(self.lesion3D.GetNumberOfPoints())
         print "Number of cells: %d" % int(self.lesion3D.GetNumberOfCells())
@@ -148,14 +171,22 @@ class Send(object):
         ###### Extract T2 features, Process T2 and visualize
         #############################
         if (T2SeriesID != 'NONE'):     
-            self.loadDisplay.visualize(self.load.DICOMImages, self.load.image_pos_pat, self.load.image_ori_pat, sub=True, postS=1, interact=False)
+            self.loadDisplay.visualize(self.load.DICOMImages, self.load.image_pos_pat, self.load.image_ori_pat, sub=True, postS=4, interact=True)
             print "\n Visualize addT2visualize ..."
             self.loadDisplay.addT2visualize(self.load.T2Images, self.load.T2image_pos_pat, self.load.T2image_ori_pat, self.load.T2dims, self.load.T2spacing, interact=True)
+            
+            if(lesion_id>0):
+                #transT2 = int(raw_input('\n Translate T2 by xf_T1? Yes:1 No:0 : '))
+                #if transT2:
+                self.loadDisplay.addT2transvisualize(self.load.T2Images, self.load.T2image_pos_pat, self.load.T2image_ori_pat, self.load.T2dims, self.load.T2spacing, sideBreast, interact=False)
+                self.load.T2image_pos_pat[0] = -self.loadDisplay.T2origin[2] 
+                
         else:
             self.loadDisplay.visualize(self.load.DICOMImages, self.load.image_pos_pat, self.load.image_ori_pat, sub=True, postS=1, interact=True)
                                
-        # extract annotation if any    
-        if len(fileline) > 13:
+        # extract annotation if any   
+        findannot=False
+        if findannot:
             if fileline[13] !='NA' and fileline[13] !='[]':
                 annots_all = line[line.find('[')+1:line.find(']')] 
                 annots = True
@@ -212,7 +243,7 @@ class Send(object):
         #############################
         # 4) Manually modify Segmentation of lesion. Comment out if not needed ( define seededlesion3D = lesion3D  )
         #############################
-        chgSeg = 0#int(raw_input('\n Enter 1 to modify segmentation, 0 to skip: ') )
+        chgSeg = int(raw_input('\n Enter 1 to modify segmentation, 0 to skip: ') )
         if chgSeg == 1:
             #  Get z slice
             self.loadDisplay.renderer1.RemoveActor(self.loadDisplay.actor_mesh)
@@ -222,14 +253,14 @@ class Send(object):
             seeds = self.loadDisplay.display_pick(self.load.DICOMImages, self.load.image_pos_pat, self.load.image_ori_pat, 4, LesionZslice)
             
             seededlesion3D = self.createSegment.segmentFromSeeds(self.load.DICOMImages, self.load.image_pos_pat, self.load.image_ori_pat, seeds, self.loadDisplay.iren1, self.loadDisplay.xImagePlaneWidget, self.loadDisplay.yImagePlaneWidget,  self.loadDisplay.zImagePlaneWidget)
-            self.loadDisplay.addSegment(seededlesion3D, (0,0,1), interact=False)
+            self.loadDisplay.addSegment(seededlesion3D, (1,0,0), interact=False)
             self.loadDisplay.picker.RemoveAllObservers()
             
             # save it to file	             
             #self.createSegment.saveSegmentation(lesionID_path, seededlesion3D, lesionfilename=0) 
-            self.createSegment.saveSegmentation(path_rootFolder+os.sep+'segmentations', seededlesion3D, lesionfilename=StudyID+'_'+DicomExamNumber+'_'+Lesionfile+'.vtk') 
             self.lesion3D = seededlesion3D
-            
+            self.createSegment.saveSegmentation(self.pathSegment,  self.lesion3D, lesionfilename=self.nameSegment) 
+           
             axis_lengths = self.loadDisplay.extract_segment_dims(self.lesion3D)
             print axis_lengths
             self.eu_dist_seg = float( sqrt( axis_lengths[0] + axis_lengths[1])) # only measure x-y euclidian distance betweeen extreme points
@@ -249,7 +280,7 @@ class Send(object):
             print "\n Lesion centroid"
             print self.lesion_centroid_ijk
 
-        return series_path, phases_series, self.lesion3D 
+        return series_path, phases_series, self.lesion3D, chgSeg 
         
     
     def processT2(self, T2SeriesID, img_folder, StudyID, DicomExamNumber):
@@ -334,10 +365,17 @@ class Send(object):
                 bounds_muscleSI = [float(l[0]), float(l[1]), float(l[2]), float(l[3]), float(l[4]), float(l[5]) ]
                 print "\n bounds_muscleSI from file:"
                 print bounds_muscleSI
-                       
-                # instead of extract_muscleSI use load_muscleSI from file
-                [T2_muscleSI, muscle_scalar_range]  = self.T2.load_muscleSI(self.load.T2Images, self.load.T2image_pos_pat, self.load.T2image_ori_pat, bounds_muscleSI, self.loadDisplay.iren1)
-                print "ave. T2_muscleSI: %d" % mean(T2_muscleSI)
+                
+                #rebounds=0    
+                rebounds = int(raw_input('\n Select bounds for muscle again? Yes:1 No:0 : '))
+                if rebounds:
+                    # Do extract_muscleSI 
+                    [T2_muscleSI, muscle_scalar_range, bounds_muscleSI]  = self.T2.extract_muscleSI(self.load.T2Images, self.load.T2image_pos_pat, self.load.T2image_ori_pat,  self.loadDisplay.iren1, self.loadDisplay.renderer1, self.loadDisplay.picker, self.loadDisplay.xImagePlaneWidget, self.loadDisplay.yImagePlaneWidget, self.loadDisplay.zImagePlaneWidget)
+                    print "ave. T2_muscleSI: %d" % mean(T2_muscleSI)
+                else:
+                    # instead of extract_muscleSI use load_muscleSI from file
+                    [T2_muscleSI, muscle_scalar_range]  = self.T2.load_muscleSI(self.load.T2Images, self.load.T2image_pos_pat, self.load.T2image_ori_pat, bounds_muscleSI, self.loadDisplay.iren1)
+                    print "ave. T2_muscleSI: %d" % mean(T2_muscleSI)
     
             else:
                 # Do extract_muscleSI 

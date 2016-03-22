@@ -12,31 +12,20 @@ import sys
 from sys import argv, stderr, exit
 import numpy as np
 import dicom
-import psycopg2
-import pandas as pd
-
-import processDicoms
 
 from inputs_init import *
 from display import *
-from features_dynamic import *
-from features_morphology import *
-from features_texture import *
-from features_T2 import *
-from segment import *
-import pylab      
-import annot
 from add_records import *
 
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
         
 from sklearn.cluster import KMeans
-from sklearn import datasets
 import scipy.spatial.distance as dist
 import networkx as nx
 import itertools
 from collections import Counter
+import datetime
 
 class newFeatures(object):
     """
@@ -145,8 +134,9 @@ class newFeatures(object):
         #############################
         # find mapping to Dicom space  
         if (T2SeriesID != 'NONE'): 
-            [transformed_T2, t_cube] = self.loadDisplay.dicomTransform(self.load.T2Images, self.load.T2image_pos_pat, self.load.T2image_ori_pat)
-        
+            #[transformed_T2, t_cube] = self.loadDisplay.dicomTransform(self.load.T2Images, self.load.T2image_pos_pat, self.load.T2image_ori_pat)
+            transformed_T2 = self.loadDisplay.transformed_T2image
+            
             for j in range( VOI_mesh.GetNumberOfPoints() ):
                 VOI_mesh.GetPoint(j, VOIPnt)      
                 # extract pixID at location VOIPnt
@@ -452,7 +442,7 @@ class newFeatures(object):
         fig = plt.figure(3, figsize=(4, 3))
         plt.clf()
         nx.draw(self.G)
-        plt.show()
+        #plt.show()
         
         return self.G
     
